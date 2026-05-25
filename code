@@ -1,0 +1,260 @@
+# ============================================================
+# Heatwave-Related Mortality Risk Prediction
+# Full Machine Learning Pipeline
+# ============================================================
+
+# =========================
+# 1. IMPORT LIBRARIES
+# =========================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix
+)
+
+# =========================
+# 2. LOAD DATASET
+# =========================
+
+# Replace with your dataset path
+df = pd.read_csv("heatwave_mortality_synthetic_dataset.csv")
+
+print("Dataset Shape:")
+print(df.shape)
+
+print("\nFirst 5 Rows:")
+print(df.head())
+
+# =========================
+# 3. DATA PREPROCESSING
+# =========================
+
+# Convert date column to datetime
+df['date'] = pd.to_datetime(df['date'])
+
+# Check missing values
+print("\nMissing Values:")
+print(df.isnull().sum())
+
+# =========================
+# 4. FEATURE ENGINEERING
+# =========================
+
+# Extract time-based features
+df['year'] = df['date'].dt.year
+df['month'] = df['date'].dt.month
+df['day'] = df['date'].dt.day
+
+# Create temperature difference feature
+df['temp_range'] = (
+    df['max_temperature_c'] - df['min_temperature_c']
+)
+
+# =========================
+# 5. EXPLORATORY DATA ANALYSIS
+# =========================
+
+# Temperature Distribution
+plt.figure(figsize=(8,5))
+sns.histplot(df['max_temperature_c'], bins=30, kde=True)
+plt.title("Maximum Temperature Distribution")
+plt.xlabel("Temperature (°C)")
+plt.ylabel("Frequency")
+plt.show()
+
+# Mortality Count Distribution
+plt.figure(figsize=(8,5))
+sns.histplot(df['mortality_count'], bins=30, kde=True)
+plt.title("Mortality Count Distribution")
+plt.xlabel("Mortality Count")
+plt.ylabel("Frequency")
+plt.show()
+
+# Correlation Heatmap
+plt.figure(figsize=(14,10))
+
+numeric_df = df.select_dtypes(include=np.number)
+
+sns.heatmap(
+    numeric_df.corr(),
+    annot=True,
+    cmap='coolwarm',
+    fmt='.2f'
+)
+
+plt.title("Feature Correlation Heatmap")
+plt.show()
+
+# =========================
+# 6. TARGET ENCODING
+# =========================
+
+label_encoder = LabelEncoder()
+
+df['mortality_risk_encoded'] = label_encoder.fit_transform(
+    df['mortality_risk_level']
+)
+
+print("\nEncoded Classes:")
+print(label_encoder.classes_)
+
+# =========================
+# 7. FEATURE SELECTION
+# =========================
+
+features = [
+    'max_temperature_c',
+    'min_temperature_c',
+    'avg_temperature_c',
+    'humidity_percent',
+    'wind_speed_kmh',
+    'rainfall_mm',
+    'pm25_air_pollution',
+    'uv_index',
+    'heat_index',
+    'elderly_population_pct',
+    'population_density',
+    'poverty_index',
+    'heatwave',
+    'consecutive_heat_days',
+    'temp_range',
+    'month'
+]
+
+X = df[features]
+
+y = df['mortality_risk_encoded']
+
+# =========================
+# 8. TRAIN-TEST SPLIT
+# =========================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+print("\nTraining Shape:", X_train.shape)
+print("Testing Shape:", X_test.shape)
+
+# =========================
+# 9. MODEL TRAINING
+# =========================
+
+model = RandomForestClassifier(
+    n_estimators=200,
+    max_depth=10,
+    random_state=42
+)
+
+model.fit(X_train, y_train)
+
+# =========================
+# 10. MODEL PREDICTION
+# =========================
+
+y_pred = model.predict(X_test)
+
+# =========================
+# 11. MODEL EVALUATION
+# =========================
+
+accuracy = accuracy_score(y_test, y_pred)
+
+print("\nModel Accuracy:")
+print(f"{accuracy:.4f}")
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred)
+
+plt.figure(figsize=(6,5))
+
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=label_encoder.classes_,
+    yticklabels=label_encoder.classes_
+)
+
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+
+# =========================
+# 12. FEATURE IMPORTANCE
+# =========================
+
+importance = model.feature_importances_
+
+feature_importance = pd.DataFrame({
+    'Feature': features,
+    'Importance': importance
+})
+
+feature_importance = feature_importance.sort_values(
+    by='Importance',
+    ascending=False
+)
+
+print("\nFeature Importance:")
+print(feature_importance)
+
+# Plot Feature Importance
+plt.figure(figsize=(10,6))
+
+sns.barplot(
+    x='Importance',
+    y='Feature',
+    data=feature_importance
+)
+
+plt.title("Feature Importance")
+plt.show()
+
+# =========================
+# 13. SAMPLE PREDICTION
+# =========================
+
+sample = X.iloc[[0]]
+
+prediction = model.predict(sample)
+
+predicted_label = label_encoder.inverse_transform(prediction)
+
+print("\nSample Prediction:")
+print(predicted_label[0])
+
+# =========================
+# 14. SAVE MODEL (OPTIONAL)
+# =========================
+
+import joblib
+
+joblib.dump(
+    model,
+    "heatwave_mortality_model.pkl"
+)
+
+print("\nModel saved successfully!")
+
+# ============================================================
+# END OF PROJECT
+# ============================================================
