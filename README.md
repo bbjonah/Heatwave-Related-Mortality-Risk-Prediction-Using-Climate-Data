@@ -262,4 +262,7 @@ This project is open-source and available under the [MIT License](LICENSE).
 
 ## Author
 
+**Buka Jonah**
+
+
 Developed as a **Public Health Data Science and Machine Learning** project focused on climate-health risk prediction.
